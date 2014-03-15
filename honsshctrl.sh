@@ -7,7 +7,7 @@ shopt -s -o nounset
 #
 #   Author:     Black September
 #   Date:       2014, March 1
-#   Version:    1.2.1
+#   Version:    1.2.2
 #   Plattform:  OpenBSD 5.4 amd64
 #
 #
