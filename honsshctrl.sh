@@ -15,6 +15,7 @@ shopt -s -o nounset
 # ----- Absolute path declarations
 declare -rx Script="${0##*/}"
 declare -rx twistd="/usr/local/bin/twistd"
+declare -rx ckeygen="/usr/local/bin/ckeygen"
 declare -rx cat="/bin/cat"
 declare -rx echo="/bin/echo"
 declare -rx kill="/bin/kill"
@@ -24,8 +25,11 @@ declare main_dir="/HONEY"
 declare honssh_tac="$main_dir/honssh.tac"
 declare honssh_log="$main_dir/logs/honssh.log"
 declare honssh_pid="$main_dir/honssh.pid"
+declare id_rsa="$main_dir/id_rsa"
+declare id_rsa_pub="$main_dir/rd_rsa.pub"
 
 
+# ----- We require one argument
 if [ $# != 1 ]
 then
     $echo 'ERROR: This script requiers one argument'
@@ -34,6 +38,22 @@ then
 fi
 
 
+# ----- If the public/private keys are missing, generate them
+if [ ! -e $id_rsa ]
+then
+    echo "WARNING: Unable to find $id_rsa, generating it now..."
+    $ckeygen -t rsa -f id_rsa -f $id_rsa
+fi
+
+
+if [ ! -e $id_rsa_pub ]
+then
+    echo "WARNING: Unable to find $id_rsa_pub, generating it now..."
+    $ckeygen -t rsa -f id_rsa -f $id_rsa
+fi
+
+
+# ----- Start HonSSH
 function start_honssh()
 {
     if [ ! -e $honssh_pid ]
@@ -47,6 +67,7 @@ function start_honssh()
 }
 
 
+# ----- Stop HonSSH
 function stop_honssh()
 {
     if [ -e $honssh_pid ]
@@ -68,6 +89,7 @@ function stop_honssh()
 }
 
 
+# ----- Help text
 function help_honssh()
 {
 $cat << _EOF_
@@ -83,6 +105,7 @@ _EOF_
 }
 
 
+# ----- Check for known arguments, let the user know if they missed anything
 if [ $1 = 'START' ]
 then
     start_honssh
