@@ -8,6 +8,8 @@ shopt -s -o nounset
 #   Author:     Black September
 #   Date:       2014, March 1
 #   Version:    1.2.1
+#   Plattform:  OpenBSD 5.4 amd64
+#
 #
 
 # ----- Absolute path declarations
