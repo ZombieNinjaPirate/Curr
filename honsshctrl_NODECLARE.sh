@@ -9,8 +9,8 @@ shopt -s -o nounset
 #
 #   Author:     Black September
 #   Date:       2014, March 1
-#   Version:    1.2.1
-#	Plattform:	n/a
+#   Version:    1.2.2
+#   Plattform:  n/a
 #
 
 
@@ -20,6 +20,7 @@ declare honssh_log="logs/honssh.log"
 declare honssh_pid="honssh.pid"
 
 
+# ----- We require one argument
 if [ $# != 1 ]
 then
     echo 'ERROR: This script requiers one argument'
@@ -28,6 +29,22 @@ then
 fi
 
 
+# ----- If the public/private keys are missing, generate them
+if [ ! -e id_rsa ]
+then
+    echo "WARNING: Unable to find id_rsa, generating it now..."
+    ckeygen -t rsa -f id_rsa
+fi
+
+
+if [ ! -e id_rsa.pub ]
+then
+    echo "WARNING: Unable to find id_rsa_pub, generating it now..."
+    ckeygen -t rsa -f id_rsa
+fi
+
+
+# ----- Start HonSSh
 function start_honssh()
 {
     if [ ! -e $honssh_pid ]
@@ -41,6 +58,7 @@ function start_honssh()
 }
 
 
+# ----- Stop HonSSH
 function stop_honssh()
 {
     if [ -e $honssh_pid ]
@@ -62,7 +80,7 @@ function stop_honssh()
 }
 
 
-
+# ----- Help text
 function help_honssh()
 {
 cat << _EOF_
@@ -78,6 +96,7 @@ _EOF_
 }
 
 
+# ----- Check for known arguments, let the user know if they missed anything
 if [ $1 = 'START' ]
 then
     start_honssh
