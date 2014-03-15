@@ -41,14 +41,14 @@ fi
 # ----- If the public/private keys are missing, generate them
 if [ ! -e $id_rsa ]
 then
-    echo "WARNING: Unable to find $id_rsa, generating it now..."
+    $echo "WARNING: Unable to find $id_rsa, generating it now..."
     $ckeygen -t rsa -f id_rsa -f $id_rsa
 fi
 
 
 if [ ! -e $id_rsa_pub ]
 then
-    echo "WARNING: Unable to find $id_rsa_pub, generating it now..."
+    $echo "WARNING: Unable to find $id_rsa_pub, generating it now..."
     $ckeygen -t rsa -f id_rsa -f $id_rsa
 fi
 
