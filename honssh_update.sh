@@ -6,7 +6,7 @@
 #   HonSSH update script.
 #
 #   Date:       2014, March 16
-#   Version:    1.0.1
+#   Version:    1.0.2
 #   Plattform:  OpenBSD 5.4 amd64
 #
 #   Copyright (c) 2014, Black September - Honeypot Development
@@ -41,6 +41,7 @@ declare -rx Script="${0##*/}"
 declare -rx cat="/bin/cat"
 declare -rx echo="/bin/echo"
 declare -rx mv="/bin/mv"
+declare -rx rm="/bin/rm"
 declare -rx sleep="/bin/sleep"
 declare -rx cut="/usr/bin/cut"
 declare -rx grep="/usr/bin/grep"
@@ -53,6 +54,7 @@ declare revnr_file="/HONEY/.git/ORIG_HEAD"
 declare honssh_pid="/HONEY/honssh.pid"
 declare honssh_cfg="/HONEY/honssh.cfg"
 declare honssh_bup="/HONEY/honssh.cfg.BACKUP"
+declare honssh_ctrl="/HONEY/honsshctrl.sh"
 
 
 # ----- We demand one argument.
@@ -87,13 +89,21 @@ function get_latest()
 {
     check_state
 
-    $mv $honssh_cfg $honssh_bup
+    if [ -e $honssh_cfg ]
+    then
+        $mv $honssh_cfg $honssh_bup
+    fi
 
     $sleep 0.2
 
     cd /HONEY && $git pull
 
     $sleep 0.2
+
+    if [ -f $honssh_ctrl ]
+    then
+        $rm $honssh_ctrl
+    fi
     
     if [ -e $honssh_cfg ]
     then
@@ -104,7 +114,10 @@ function get_latest()
         $echo "the newest version has been renamed to $honssh_new."
         $echo 'You might want to inspect the newest version before starting HonSSH again.$'
     else
-        $mv $honss_bup $honssh_cfg
+        if [ -f $honssh_bup ]
+        then
+            $mv $honssh_bup $honssh_cfg
+        fi
     fi
 }
 
