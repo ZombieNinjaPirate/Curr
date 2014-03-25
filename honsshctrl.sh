@@ -9,7 +9,7 @@ shopt -s -o nounset
 #   NOTE: This version uses the absolute path declarations under OpenBSD 5.4 
 #
 #   Date:       2014, March 1
-#   Version:    1.2.2
+#   Version:    1.2.3
 #   Plattform:  OpenBSD 5.4 amd64
 #
 #   Copyright (c) 2014, Black September - Honeypot Development
@@ -41,6 +41,7 @@ shopt -s -o nounset
 
 # ----- Absolute path declarations
 declare -rx Script="${0##*/}"
+declare -rx id="/usr/bin/id"
 declare -rx twistd="/usr/local/bin/twistd"
 declare -rx ckeygen="/usr/local/bin/ckeygen"
 declare -rx cat="/bin/cat"
@@ -54,7 +55,7 @@ declare honssh_tac="$main_dir/honssh.tac"
 declare honssh_log="$main_dir/logs/honssh.log"
 declare honssh_pid="$main_dir/honssh.pid"
 declare id_rsa="$main_dir/id_rsa"
-declare id_rsa_pub="$main_dir/rd_rsa.pub"
+declare id_rsa_pub="$main_dir/id_rsa.pub"
 
 
 # ----- We require one argument
@@ -63,27 +64,42 @@ then
     $echo 'ERROR: This script requiers one argument'
     $echo "USAGE: $Script HELP"
     exit 1
+else
+    cd $main_dir
 fi
 
 
 # ----- If the public/private keys are missing, generate them
-if [ ! -e $id_rsa ]
+if [ ! -f $id_rsa ]
 then
     $echo "WARNING: Unable to find $id_rsa, generating it now..."
     $ckeygen -t rsa -f id_rsa -f $id_rsa
 fi
 
 
-if [ ! -e $id_rsa_pub ]
+if [ ! -f $id_rsa_pub ]
 then
     $echo "WARNING: Unable to find $id_rsa_pub, generating it now..."
     $ckeygen -t rsa -f id_rsa -f $id_rsa
 fi
 
 
+# ----- Check if effective UID is root
+function root_check()
+{
+    if [ $($id -u) != 0 ]
+    then
+        $echo 'ERROR: You have to be root to do this!'
+        exit 1
+    fi
+}
+
+
 # ----- Start HonSSH
 function start_honssh()
 {
+    root_check
+
     if [ ! -e $honssh_pid ]
     then
         $echo "Starting honssh in background..."
@@ -98,6 +114,8 @@ function start_honssh()
 # ----- Stop HonSSH
 function stop_honssh()
 {
+    root_check
+
     if [ -e $honssh_pid ]
     then
         honey_pid="$($cat $honssh_pid)"
