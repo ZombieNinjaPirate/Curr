@@ -2,7 +2,6 @@
 
 shopt -s -o nounset
 
-
 #
 #
 #   HonSSH management script.
