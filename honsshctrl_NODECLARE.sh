@@ -11,7 +11,7 @@ shopt -s -o nounset
 #   Version:    1.2.2
 #   Plattform:  n/a
 #
-#   Copyright (c) 2014, Black September - Honeypot Development
+#   Copyright (c) 2014, Are Hansen - Honeypot Development
 # 
 #   All rights reserved.
 # 
