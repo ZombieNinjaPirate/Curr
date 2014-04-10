@@ -11,7 +11,7 @@ shopt -s -o nounset
 #   Version:    1.2.3
 #   Plattform:  OpenBSD 5.4 amd64
 #
-#   Copyright (c) 2014, Black September - Honeypot Development
+#   Copyright (c) 2014, Are Hansen - Honeypot Development
 # 
 #   All rights reserved.
 # 
