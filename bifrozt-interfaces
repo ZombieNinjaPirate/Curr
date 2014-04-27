@@ -1,0 +1,22 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+pre-up iptables-restore < /etc/network/iptables
+
+# - External interface
+auto eth0
+iface eth0 inet dhcp
+
+# - Internal interface
+auto eth1
+iface eth1 inet static
+	address 10.199.112.1
+	netmask 255.255.252.0
+	network 10.199.112.0
+	broadcast 10.199.115.255
+
+dns-nameservers 8.8.8.8
