@@ -41,9 +41,17 @@ unset DEBIAN_FRONTEND
 declare Script="Bifrozt_Installer"
 declare Slog="/var/log/$Script.log"
 declare Elog="/var/log/$Script_Error.log"
+declare -rx chmod="/bin/chmod"
+declare -rx date="/bin/date"
+declare -rx echo="/bin/echo"
+declare -rx sed="/bin/sed"
+declare -rx tar="/bin/tar"
+declare -rx autoreconf="/usr/bin/autoreconf"
+declare -rx apt-get="/usr/bin/apt-get"
+declare -rx git="/usr/bin/git"
+declare -rx make="/usr/bin/make"
+declare -rx wget="/usr/bin/wget"
 
-# DEV NOTES:
-#   - Add absolute paths to executables
 
 function install_deb_pkgs()
 {
@@ -52,21 +60,15 @@ function install_deb_pkgs()
     $apt-get upgrade -y
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: System is now up to date" >> $Slog
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Bifrozt base deb packages" >> $Slog
-    $apt-get install git isc-dhcp-server htop \
-    slurm python-twisted python-mysqldb python-paramiko -y
+    $apt-get install git isc-dhcp-server htop slurm python-twisted python-mysqldb python-paramiko -y
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt base packages deb was installed" >> $Slog
+
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Honeyd deb packages" >> $Slog
     $apt-get install honeyd honeyd-common iisemulator -y
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Honeyd deb packages was installed" >> $Slog
-
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Dionaea deb packages" >> $Slog
-    $apt-get install autoconf automake bison build-essential flex libcurl4-openssl-dev \
-    libglib2.0-dev libreadline-dev libsqlite3-dev libssl-dev libtool libudns-dev \
-    pkg-config python-dev subversion install libnl-3-dev libnl-genl-3-dev libnl-nf-3-dev \
-    libnl-route-3-dev curl libcurl3 python-pycurl p0f -y
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Dionaea deb was installed" >> $Slog
 }
 
 
@@ -86,25 +88,30 @@ function wget_configs()
     $echo 'INTERFACES="eth1"' > /etc/default/isc-dhcp-server
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/dhcp/dhcpd.conf" >> $Slog
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching interfaces file" >> $Slog
     $wget -q https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/bifrozt-interfaces \
     -O /etc/network/interfaces >> $Slog
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/network/interfaces" >> $Slog
+
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching sshd.config file" >> $Slog
     $wget -q https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/bifrozt-sshd_config \
     -O /etc/ssh/sshd.config >> $Slog
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/ssh/sshd.config" >> $Slog
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching sysctl.conf file" >> $Slog
     $wget -q https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/bifrozt-sysctl.conf \
     -O /etc/sysctl.conf >> $Slog
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/sysctl.conf" >> $Slog
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching iptables file" >> $Slog
     $wget -q https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/bifrozt-tables \
     -O /etc/network/iptables >> $Slog
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/network/iptables" >> $Slog
+
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching 10-help-text file" >> $Slog
     $wget -q https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/bifrozt-10-help-text \
@@ -112,25 +119,29 @@ function wget_configs()
     $chmod 0755 /etc/update-motd.d/10-help-text
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/update-motd.d/10-help-text" >> $Slog
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching motd-00-header file" >> $Slog
     $wget -q https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/bifrozt-motd-00-header \
     -O /etc/update-motd.d/motd-00-header >> $Slog
     $chmod 0755 /etc/update-motd.d/motd-00-header
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/update-motd.d/motd-00-header" >> $Slog
-
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching dionaea_run file" >> $Slog
-    $wget -q https://raw.githubusercontent.com/ikoniaris/dionaea-vagrant/master/runDionaea.sh \
-    -O /usr/local/bin/dionaea_run >> $Slog
-    $chmod 0755 /usr/local/bin/dionaea_run
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /usr/local/bin/dionaea_run" >> $Slog
 }
 
 
 function install_dionaea()
 {
+    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Dionaea deb packages" >> $Slog
+    $apt-get install autoconf automake bison build-essential flex libcurl4-openssl-dev \
+    libglib2.0-dev libreadline-dev libsqlite3-dev libssl-dev libtool libudns-dev \
+    pkg-config python-dev subversion install libnl-3-dev libnl-genl-3-dev libnl-nf-3-dev \
+    libnl-route-3-dev curl libcurl3 python-pycurl p0f -y
+    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Dionaea deb was installed" >> $Slog
+
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Dionaea dependencies" >> $Slog
     $mkdir /opt/dionaea
     cd /opt/dionaea
+
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing dep: liblcfg" >> $Slog
     $git clone git://git.carnivore.it/liblcfg.$git liblcfg
@@ -140,6 +151,7 @@ function install_dionaea()
     $make install
     cd /opt/dionaea
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing dep: libemu" >> $Slog
     $git clone git://git.carnivore.it/libemu.$git libemu >> $Slog
     cd /opt/dionaea/libemu
@@ -148,6 +160,7 @@ function install_dionaea()
     $make install
     cd /opt/dionaea
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing dep: libev-4.04" >> $Slog
     $wget http://dist.schmorp.de/libev/Attic/libev-4.04.tar.gz >> $Slog
     $tar xfz libev-4.04.tar.gz
@@ -155,6 +168,7 @@ function install_dionaea()
     ./configure --prefix=/opt/dionaea
     $make install
     cd /opt/dionaea
+
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing dep: Python-3.2.2" >> $Slog
     $wget http://www.python.org/ftp/python/3.2.2/Python-3.2.2.tgz >> $Slog
@@ -166,12 +180,14 @@ function install_dionaea()
     $make install
     cd /opt/dionaea
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing dep: Cython-0.15" >> $Slog
     $wget http://cython.org/release/Cython-0.15.tar.gz >> $Slog
     $tar /opt/dionaea/Cython-0.15.tar.gz
     cd Cython-0.15
     /opt/dionaea/bin/python3 setup.py install
     cd /opt/dionaea
+
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing dep: libpcap-1.1.1" >> $Slog
     $wget http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz >> $Slog
@@ -182,7 +198,9 @@ function install_dionaea()
     $make install
     cd /opt/dionaea
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Dependencies have been installed" >> $Slog
+
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Compiling and installing Dionaea" >> $Slog
     $git clone git://git.carnivore.it/dionaea.$git dionaea >> $Slog
@@ -209,6 +227,7 @@ function install_dionaea()
     cd /opt/dionaea
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Dionaea has been installed" >> $Slog
 
+
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Configuring Dionaea" >> $Slog
     cd /opt/dionaea/etc/dionaea
     $sed -i 's/levels = "all"/levels = "all,-debug"/g' dionaea.conf
@@ -216,6 +235,13 @@ function install_dionaea()
     $sed -i 's/addrs = { eth1 = \["::"\] }/addrs = { eth0 = \["0.0.0.0"\] }/g' dionaea.conf
     $sed -i -r 's/\/\/\t\t\t"p0f"/\t\t\t"p0f"/g' dionaea.conf
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Dionaea may or may not be working now." >> $Slog
+
+
+    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching dionaea_run file" >> $Slog
+    $wget -q https://raw.githubusercontent.com/ikoniaris/dionaea-vagrant/master/runDionaea.sh \
+    -O /usr/local/bin/dionaea_run >> $Slog
+    $chmod 0755 /usr/local/bin/dionaea_run
+    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /usr/local/bin/dionaea_run" >> $Slog
 }
 
 
