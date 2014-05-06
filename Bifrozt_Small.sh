@@ -38,27 +38,26 @@ unset DEBCONF_FRONTEND
 unset DEBIAN_HAS_FRONTEND
 unset DEBIAN_FRONTEND
 
-declare Script="Bifrozt_Installer"
-declare Slog="/var/log/$Script.log"
-declare Elog="/var/log/$Script_Error.log"
+declare Slog="/var/log/Bifrozt_Install.log"
+declare Elog="/var/log/Bifrozt_Error.log"
 declare -rx chmod="/bin/chmod"
 declare -rx date="/bin/date"
 declare -rx echo="/bin/echo"
-declare -rx apt-get="/usr/bin/apt-get"
+declare -rx aptget="/usr/bin/apt-get"
 declare -rx git="/usr/bin/git"
 declare -rx wget="/usr/bin/wget"
 
 
 function install_deb_pkgs()
 {
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Updating current system seb packages" >> $Slog
-    $apt-get update
-    $apt-get upgrade -y
+    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Updating current system deb packages" >> $Slog
+    $aptget update
+    $aptget upgrade -y
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: System is now up to date" >> $Slog
 
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Bifrozt base deb packages" >> $Slog
-    $apt-get install git isc-dhcp-server htop slurm python-twisted python-mysqldb python-paramiko -y
+    $aptget install git isc-dhcp-server htop slurm python-twisted python-mysqldb python-paramiko -y
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt base packages deb was installed" >> $Slog
 }
 
@@ -121,8 +120,8 @@ function wget_configs()
 
 $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt installation has started" >> $Slog
 install_deb_pkgs 2>>$Elog
-fetch_configs 2>>$Elog
-wget_configs 2>>$Elog
+wget_configs 2>> $Elog
+git_honssh 2>>$Elog
 $chmod 0644 $Slog
 $chmod 0644 $Elog
 $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt installation is complete" >> $Slog
