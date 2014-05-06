@@ -1,0 +1,26 @@
+#
+d-i user-setup/encrypt-home boolean false
+#
+d-i	partman-auto/init_automatically_partition	string some_device_lvm
+d-i	partman-auto/init_automatically_partition	seen false
+#
+tasksel tasksel/force-tasks string server
+tasksel tasksel/first multiselect openssh-server
+d-i pkgsel/upgrade select full-upgrade
+d-i pkgsel/update-policy select unattended-upgrades
+d-i pkgsel/include string acpid
+d-i pkgsel/install-language-support boolean false
+#
+d-i clock-setup/utc-auto boolean true
+d-i debian-installer/quiet boolean false
+d-i debian-installer/splash boolean false
+d-i grub-installer/timeout string 2
+#
+d-i preseed/late_command string in-target wget https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/Bifrozt_Small.sh /root/Bifrozt_Small.sh ;\
+	in-target chmod +x /root/Bifrozt_Small.sh ;\
+	in-target bash /root/Bifrozt_Small.sh ;\
+	in-target rm /root/Bifrozt_Small.sh
+#
+d-i cdrom-detect/eject  boolean true
+d-i prebaseconfig/reboot_in_progress    note
+#
