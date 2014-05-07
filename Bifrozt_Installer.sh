@@ -60,11 +60,6 @@ function install_deb_pkgs()
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Bifrozt base deb packages" >> $Slog
     $aptget install git isc-dhcp-server htop slurm python-twisted python-mysqldb python-paramiko -y
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt base packages deb was installed" >> $Slog
-
-
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Honeyd deb packages" >> $Slog
-    $aptget install honeyd honeyd-common iisemulator -y
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Honeyd deb packages was installed" >> $Slog
 }
 
 
