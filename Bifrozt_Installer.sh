@@ -50,15 +50,20 @@ declare -rx wget="/usr/bin/wget"
 
 function install_deb_pkgs()
 {
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Updating current system deb packages" >> $Slog
+    $echo "$($date +"%Y %b %d - %T") $Script[$$]: Updating current system seb packages" >> $Slog
     $aptget update
     $aptget upgrade -y
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: System is now up to date" >> $Slog
+    $echo "$($date +"%Y %b %d - %T") $Script[$$]: System is now up to date" >> $Slog
 
 
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Installing Bifrozt base deb packages" >> $Slog
+    $echo "$($date +"%Y %b %d - %T") $Script[$$]: Installing Bifrozt base deb packages" >> $Slog
     $aptget install git isc-dhcp-server htop slurm python-twisted python-mysqldb python-paramiko -y
-    $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt base packages deb was installed" >> $Slog
+    $echo "$($date +"%Y %b %d - %T") $Script[$$]: Bifrozt base packages deb was installed" >> $Slog
+
+
+    $echo "$($date +"%Y %b %d - %T") $Script[$$]: Installing Honeyd deb packages" >> $Slog
+    $aptget install honeyd honeyd-common iisemulator -y
+    $echo "$($date +"%Y %b %d - %T") $Script[$$]: Honeyd deb packages was installed" >> $Slog
 }
 
 
