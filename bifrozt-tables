@@ -1,40 +1,82 @@
+#
+#   Copyright (c) 2014, Are Hansen - Honeypot Development
+# 
+#   All rights reserved.
+# 
+#   Redistribution and use in source and binary forms, with or without modification, are
+#   permitted provided that the following conditions are met:
+#
+#   1. Redistributions of source code must retain the above copyright notice, this list
+#   of conditions and the following disclaimer.
+# 
+#   2. Redistributions in binary form must reproduce the above copyright notice, this
+#   list of conditions and the following disclaimer in the documentation and/or other
+#   materials provided with the distribution.
+# 
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND AN
+#   EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#   OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+#   SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+#   INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+#   TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+#   BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+#   STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+#   THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+# ---------- The Bifrozt Honeypot Project 2014 ---------- #
 *filter
 :INPUT DROP [0:0]
 :FORWARD DROP [0:0]
-:OUTPUT ACCEPT [63:10188]
--A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+:OUTPUT DROP [0:0]
 -A INPUT -i lo -j ACCEPT
--A INPUT -i eth0 -p tcp -m tcp --dport 22 -j ACCEPT
+-A INPUT -d 224.0.0.1/32 -j DROP
+-A INPUT -s 10.199.115.0/24 -i eth1 -j ACCEPT
+-A INPUT -d 10.199.115.255/32 -i eth1 -j ACCEPT
+-A INPUT -i eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -i eth0 -p tcp -j ACCEPT
+-A INPUT -i eth0 -p udp -j ACCEPT
+-A INPUT -i eth0 -p icmp -j ACCEPT
+-A INPUT -s 10.199.115.0/24 -d 10.199.115.1 -i eth1 -p tcp -m tcp --dport 22 -j DROP
+-A INPUT -i eth0 -p tcp -m tcp --dport 22 -j LOG --log-prefix "BIFROZT - HonSSH: " --log-level 7
 -A INPUT -i eth0 -p tcp -m tcp --dport 60037 -j ACCEPT
--A INPUT -i eth1 -j ACCEPT
--A INPUT -p icmp -m icmp --icmp-type 8 -j ACCEPT
--A INPUT -p icmp -m icmp --icmp-type 0 -j ACCEPT
--A INPUT -p icmp -m icmp --icmp-type 3 -j ACCEPT
--A INPUT -p icmp -m icmp --icmp-type 4 -j ACCEPT
--A INPUT -p icmp -m icmp --icmp-type 11 -j ACCEPT
--A INPUT -p icmp -m icmp --icmp-type 12 -j ACCEPT
--A INPUT -p tcp -m tcp --tcp-flags SYN,FIN SYN,FIN -j DROP
--A INPUT -p tcp -m tcp --tcp-flags SYN,RST SYN,RST -j DROP
--A INPUT -p tcp -m tcp --tcp-flags RST RST -m limit --limit 2/second --limit-burst 2 -j ACCEPT
--A INPUT -m state --state INVALID -j DROP
--A FORWARD -m state --state INVALID -j DROP
--A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
--A FORWARD -i eth1 -o eth0 -m state --state NEW -j ACCEPT
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 20:21 -m state --state NEW -m recent --set -m limit --limit 6/sec --limit-burst 6 -j LOG --log-prefix "BIFROZT - FTP: " --log-level 7
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 20:21 -m state --state NEW -m recent --update --seconds 1 --hitcount 6 -j DROP 
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p udp -m udp --dport 53 -m state --state NEW -m recent --set -m limit --limit 12/sec --limit-burst 12 -j LOG --log-prefix "BIFROZT - DNS udp: " --log-level 7
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p udp -m udp --dport 53 -m state --state NEW -m recent --update --seconds 1 --hitcount 12 -j DROP 
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 80 -m state --state NEW -m recent --set -m limit --limit 6/sec --limit-burst 6 -j LOG --log-prefix "BIFROZT - HTTP: " --log-level 7
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 80 -m state --state NEW -m recent --update --seconds 1 --hitcount 6 -j DROP 
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 443 -m state --state NEW -m recent --set -m limit --limit 6/sec --limit-burst 6 -j LOG --log-prefix "BIFROZT - HTTPS: " --log-level 7
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 443 -m state --state NEW -m recent --update --seconds 1 --hitcount 6 -j DROP
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 6660:6667 -m state --state NEW -m recent --set -m limit --limit 6/sec --limit-burst 6 -j LOG --log-prefix "BIFROZT - IRC: " --log-level 7
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp --dport 6660:6667 -m state --state NEW -m recent --update --seconds 1 --hitcount 6 -j DROP
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp -m state --state NEW -m recent --set -m limit --limit 15/min --limit-burst 6 -j LOG --log-prefix "BIFROZT - Data control TCP: " --log-level 7
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p tcp -m tcp -m state --state NEW -m recent --update --seconds 60 --hitcount 15 -j DROP
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p udp -m udp -m state --state NEW -m recent --set -m limit --limit 15/min --limit-burst 6 -j LOG --log-prefix "BIFROZT - Data control UDP: " --log-level 7
+-A FORWARD -s 10.199.115.0/24 -o eth0 -p udp -m udp -m state --state NEW -m recent --update --seconds 60 --hitcount 15 -j DROP
+-A FORWARD -i eth1 -p tcp -j ACCEPT
+-A FORWARD -i eth1 -p udp -j ACCEPT
+-A FORWARD -i eth1 -j ACCEPT
+-A FORWARD -i eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -s 127.0.0.1/32 -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+-A OUTPUT -s 10.199.115.1/32 -j ACCEPT
 -A OUTPUT -o eth1 -j ACCEPT
+-A OUTPUT -o eth0 -j ACCEPT
 COMMIT
-
+# ---------- The Bifrozt Honeypot Project 2014 ---------- #
+*mangle
+:PREROUTING ACCEPT [11555:635648]
+:INPUT ACCEPT [5541:383028]
+:FORWARD ACCEPT [6014:252620]
+:OUTPUT ACCEPT [1133:203218]
+:POSTROUTING ACCEPT [7147:455838]
+COMMIT
+# ---------- The Bifrozt Honeypot Project 2014 ---------- #
 *nat
-:PREROUTING ACCEPT [0:0]
-:INPUT ACCEPT [0:0]
-:OUTPUT ACCEPT [0:0]
+:PREROUTING ACCEPT [3275:176962]
+:INPUT ACCEPT [297:45950]
+:OUTPUT ACCEPT [12:3424]
 :POSTROUTING ACCEPT [0:0]
 -A POSTROUTING -o eth0 -j MASQUERADE
 COMMIT
-
-*mangle
-:PREROUTING ACCEPT [109:8148]
-:INPUT ACCEPT [109:8148]
-:FORWARD ACCEPT [0:0]
-:OUTPUT ACCEPT [65:10356]
-:POSTROUTING ACCEPT [65:10356]
-COMMIT
+# ---------- The Bifrozt Honeypot Project 2014 ---------- #
