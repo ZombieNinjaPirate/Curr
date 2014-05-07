@@ -128,6 +128,7 @@ $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt installation has started"
 install_deb_pkgs 2>>$Elog
 wget_configs 2>> $Elog
 git_honssh 2>>$Elog
+$rm /etc/update-motd.d/50-landscape-sysinfo
 $chmod 0644 $Slog
 $chmod 0644 $Elog
 $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Bifrozt installation is complete" >> $Slog
