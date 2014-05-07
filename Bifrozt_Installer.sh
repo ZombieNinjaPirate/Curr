@@ -43,6 +43,7 @@ declare Elog="/var/log/Bifrozt_Error.log"
 declare -rx chmod="/bin/chmod"
 declare -rx date="/bin/date"
 declare -rx echo="/bin/echo"
+declare -rx rm="/bin/rm"
 declare -rx aptget="/usr/bin/apt-get"
 declare -rx git="/usr/bin/git"
 declare -rx wget="/usr/bin/wget"
@@ -117,7 +118,7 @@ function wget_configs()
 
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Fetching motd-00-header file" >> $Slog
     $wget -q https://raw.githubusercontent.com/ZombieNinjaPirate/Bifrozt/master/bifrozt-motd-00-header \
-    -O /etc/update-motd.d/motd-00-header >> $Slog
+    -O /etc/update-motd.d/00-header >> $Slog
     $chmod 0755 /etc/update-motd.d/motd-00-header
     $echo "$($date +"%Y  %b %d - %T") $Script[$$]: Created /etc/update-motd.d/motd-00-header" >> $Slog
 }
