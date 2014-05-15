@@ -27,7 +27,7 @@
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 
 import argparse
@@ -79,8 +79,9 @@ def found_login(loglines):
     """Parses each item in the loglines for entries that shows a valid usr/passwd was found.
     Then runs the attacker's IP address against the GeoIP database and outputs the results
     with date, time, IP and origin country to stdout."""
-    h1 = '+---------+--------+----------------+---------------+'
-    h2 = '|  Date   |  Time  |   IP address   |   Country     |'
+    h0 = '|  Attackers a with valid username/password combo  |'
+    h1 = '+---------+--------+----------------+--------------+'
+    h2 = '|  Date   |  Time  |   IP address   |   Country    |'
     gi = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
     output = []
 
@@ -89,7 +90,7 @@ def found_login(loglines):
             login_ok = line.split()
             output.append('{0} {1}'.format(login_ok[4], login_ok[5]))
 
-    print('{0}\n{1}\n{0}'.format(h1, h2))
+    print('{0}\n{2}\n{0}\n{1}\n{0}'.format(h1, h2, h0))
     for data in sorted(output, reverse=True):
         data = data.split()
         time = data[0].replace('_', '   ')
