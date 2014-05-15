@@ -23,12 +23,10 @@
     THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-"""Searches HonSSH log files and returns information gathered from them"""
-
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 import argparse
@@ -77,8 +75,22 @@ def found_login(loglist):
             login_ok = line.split()
             output.append('{0} {1}'.format(login_ok[4], login_ok[5]))
 
-    for out in sorted(output, reverse=True):
-        print out
+    return sorted(output, reverse=True)
+
+
+def geoip_output(attack_data):
+    """Runs the attacker's IP against the GeoIP database and outputs the results to stdout."""
+    gi = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
+    h1 = '+---------+--------+----------------+---------------+'
+    h2 = '|  Date   |  Time  |   IP address   |   Country     |'
+
+    print('{0}\n{1}\n{0}'.format(h1, h2))
+    for data in attack_data:
+        data = data.split()
+        time = data[0].replace('_', '   ')
+        ipad = data[1]
+        geo = gi.country_name_by_addr(data[1])
+        print(' {0}   {1}   \t{2}'.format(time, ipad, geo))
 
 
 def process_args(args):
@@ -90,7 +102,8 @@ def process_args(args):
         sys.exit(1)
 
     honssh_logs = find_logs(logdir)
-    found_login(honssh_logs)
+    got_access = found_login(honssh_logs)
+    geoip_output(got_access)
 
 
 def main():
