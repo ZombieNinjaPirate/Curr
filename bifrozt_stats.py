@@ -27,7 +27,7 @@
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.4'
+__version__ = '0.0.3'
 
 
 import argparse
@@ -57,6 +57,8 @@ def parse_args():
 def find_logs(logpath):
     """Searches the logpath and appends all the files that matches to a returned list object."""
     log_files = []
+    lines_log = []
+
     os.chdir(logpath)
     for logs in glob.glob('honssh.log*'):
         log_files.append(logs)
@@ -65,25 +67,24 @@ def find_logs(logpath):
         print('ERROR: No honssh.log files found in "{0}"'.format(logpath))
         sys.exit(1)
 
-    return log_files
+    for logs in log_files:
+        with open(logs, 'r') as log:
+            for line in log.readlines():
+                lines_log.append(line)
+
+    return lines_log
 
 
-def found_login(loglist):
-    """Parses each item in the loglist for entries that shows a valid usr/passwd was found.
+def found_login(loglines):
+    """Parses each item in the loglines for entries that shows a valid usr/passwd was found.
     Then runs the attacker's IP address against the GeoIP database and outputs the results
     with date, time, IP and origin country to stdout."""
     h1 = '+---------+--------+----------------+---------------+'
     h2 = '|  Date   |  Time  |   IP address   |   Country     |'
     gi = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
-    lines_log = []
     output = []
 
-    for logs in loglist:
-        with open(logs, 'r') as log:
-            for line in log.readlines():
-                lines_log.append(line)
-
-    for line in lines_log:
+    for line in loglines:
         if 'LOGIN_SUCCESSFUL' in line:
             login_ok = line.split()
             output.append('{0} {1}'.format(login_ok[4], login_ok[5]))
