@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 """
     Copyright (c) 2014, Are Hansen - Honeypot Development.
 
@@ -21,17 +22,12 @@
     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
     STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
     THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    Usage:
-    This script will search a given directory for honssh.log files and check for entries that indicates
-    the attacker found a correct username/password. Any entries matching this criteria will be sorted
-    in decending order after the country from which the ip address originated has been identified.
 """
 
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
 import argparse
@@ -61,11 +57,20 @@ def find_logs(logpath):
     for logs in glob.glob('honssh.log*'):
         log_files.append(logs)
 
+    if len(log_files) == 0:
+        print('ERROR: No honssh.log files found in "{0}"'.format(logpath))
+        sys.exit(1)
+
     return log_files
 
 
 def found_login(loglist):
-    """Parses each item in the loglist for entries that shows a valid usr/passwd was found."""
+    """Parses each item in the loglist for entries that shows a valid usr/passwd was found.
+    Then runs the attacker's IP address against the GeoIP database and outputs the results
+    with date, time, IP and origin country to stdout."""
+    h1 = '+---------+--------+----------------+---------------+'
+    h2 = '|  Date   |  Time  |   IP address   |   Country     |'
+    gi = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
     lines_log = []
     output = []
 
@@ -79,17 +84,8 @@ def found_login(loglist):
             login_ok = line.split()
             output.append('{0} {1}'.format(login_ok[4], login_ok[5]))
 
-    return sorted(output, reverse=True)
-
-
-def geoip_output(attack_data):
-    """Runs the attacker's IP against the GeoIP database and outputs the results to stdout."""
-    gi = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
-    h1 = '+---------+--------+----------------+---------------+'
-    h2 = '|  Date   |  Time  |   IP address   |   Country     |'
-
     print('{0}\n{1}\n{0}'.format(h1, h2))
-    for data in attack_data:
+    for data in sorted(output, reverse=True):
         data = data.split()
         time = data[0].replace('_', '   ')
         ipad = data[1]
@@ -106,8 +102,7 @@ def process_args(args):
         sys.exit(1)
 
     honssh_logs = find_logs(logdir)
-    got_access = found_login(honssh_logs)
-    geoip_output(got_access)
+    found_login(honssh_logs)
 
 
 def main():
