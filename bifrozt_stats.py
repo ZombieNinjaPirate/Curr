@@ -79,7 +79,7 @@ def found_login(loglines):
     """Parses each item in the loglines for entries that shows a valid usr/passwd was found.
     Then runs the attacker's IP address against the GeoIP database and outputs the results
     with date, time, IP and origin country to stdout."""
-    h0 = '|  Attackers a with valid username/password combo  |'
+    h0 = '|  Attackers with a valid username/password combo  |'
     h1 = '+---------+--------+----------------+--------------+'
     h2 = '|  Date   |  Time  |   IP address   |   Country    |'
     gi = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
