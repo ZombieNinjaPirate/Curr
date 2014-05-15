@@ -27,7 +27,7 @@
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 
 import argparse
@@ -39,9 +39,13 @@ import sys
 
 def parse_args():
     """Defines the command line arguments. """
-    parser = argparse.ArgumentParser('Gather data from HonSSH log files.')
+    parser = argparse.ArgumentParser('Gather data from HonSSH log files')
 
-    logs = parser.add_argument_group('- Log files')
+    stats = parser.add_argument_group('- Data mining options')
+    stats.add_argument('-A', dest='access', help='Attackers with a valid login',
+                        action='store_true')
+
+    logs = parser.add_argument_group('- Location of log files')
     logs.add_argument('-L', dest='logdir', help='Logs directory (default: /opt/honssh/logs)',
                       default='/opt/honssh/logs')
 
@@ -96,13 +100,16 @@ def found_login(loglist):
 def process_args(args):
     """Process the command line arguments. """
     logdir = args.logdir
+    access = args.access
 
     if not os.path.isdir(logdir):
         print('ERROR: {0} does not appear to exist!'.format(logdir))
         sys.exit(1)
 
     honssh_logs = find_logs(logdir)
-    found_login(honssh_logs)
+
+    if access:
+        found_login(honssh_logs)
 
 
 def main():
