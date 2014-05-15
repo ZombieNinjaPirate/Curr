@@ -38,7 +38,6 @@ import argparse
 import GeoIP
 import glob
 import os
-import re
 import sys
 
 
