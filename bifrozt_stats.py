@@ -21,6 +21,11 @@
     BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
     STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
     THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+    Usage:
+    This script will search a given directory for honssh.log files and check for entries that indicates
+    the attacker found a correct username/password. Any entries matching this criteria will be sorted
+    in decending order after the country from which the ip address originated has been identified.
 """
 
 
