@@ -30,7 +30,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 
 import argparse
