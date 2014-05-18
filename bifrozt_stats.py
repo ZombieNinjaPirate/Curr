@@ -29,15 +29,19 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.9'
+__version__ = '0.1.0'
 
 
 import argparse
-import GeoIP
 import glob
 import operator
 import os
 import sys
+try:
+    import GeoIP
+except ImportError:
+    print('\nERROR: GeoIP module not installed!\nsudo apt-get install python-geoip\n')
+    sys.exit(1)
 from collections import defaultdict
 
 
@@ -305,7 +309,7 @@ def process_args(args):
 
 def main():
     """
-    Do what Main does best.
+    Do what Main does best...
     """
     args = parse_args()
     process_args(args)
