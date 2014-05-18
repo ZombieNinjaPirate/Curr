@@ -40,7 +40,7 @@ import sys
 try:
     import GeoIP
 except ImportError:
-    print('\nERROR: GeoIP module not installed!\nsudo apt-get install python-geoip\n')
+    print'\nERROR: GeoIP module not installed!\nsudo apt-get install python-geoip\n'
     sys.exit(1)
 from collections import defaultdict
 
@@ -181,7 +181,7 @@ def count_list(item_list, fid):
 
     if fid == 'passwd':
         for item in item_list:
-            counts[item[1]] += 1        
+            counts[item[1]] += 1     
 
     if fid == 'usrnam':
         for item in item_list:
@@ -235,7 +235,7 @@ def show_results(items, fid, nol):
     if fid == 'origin':
         banner = '   {0}   {1}'.format('Hits', 'Country of origin')
         header = '-' * 36
-        
+
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
 
@@ -248,7 +248,7 @@ def show_results(items, fid, nol):
     if fid == 'passwd':
         banner = '  {0}   {1}'.format('Tries', 'Password')
         header = '-' * 36
-        
+
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
 
@@ -261,7 +261,7 @@ def show_results(items, fid, nol):
     if fid == 'usrnam':
         banner = '  {0}   {1}'.format('Tries', 'Username')
         header = '-' * 42
-        
+
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
 
@@ -274,7 +274,7 @@ def show_results(items, fid, nol):
     if fid == 'combos':
         banner = '  {0}   {1}'.format('Tries', 'Combinations')
         header = '-' * 48
-        
+
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
 
