@@ -30,7 +30,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.6'
+__version__ = '0.0.7'
 
 
 import argparse
@@ -51,8 +51,8 @@ def parse_args():
     parser = argparse.ArgumentParser('Gather data from HonSSH log files')
 
     attacker = parser.add_argument_group('- Attacker data')
-    attacker.add_argument('-A', dest='access', help='Attackers with a valid login',
-                          action='store_true')
+    attacker.add_argument('-A', dest='access', help='Valid login found', action='store_true')
+    attacker.add_argument('-S', dest='source', help='Connection/IP address', action='store_true')
 
     logs = parser.add_argument_group('- Location of log files')
     logs.add_argument('-L', dest='logdir', help='({0})'.format(dlog), default=dlog)
@@ -64,7 +64,7 @@ def parse_args():
 
 def find_logs(logpath):
     """
-    Searches the logpath and appends all the files that matches to a returned list object
+    Searches the logpath and appends all the files that matches to a returned list object.
     """
     log_files = []
     lines_log = []
@@ -104,16 +104,34 @@ def found_login(loglines):
     return output
 
 
+def source_ip(loglines):
+    """
+    Parses all the loglines to find entries indocating a new connection has been made. From the
+    matching entries in loglines it will extract the IP address and append it to the output list
+    thats returned from the function.
+    """
+    func_ident = 'source_ip'
+    output = []
+
+    for line in loglines:
+        if 'CONNECTION_MADE' in line:
+            new_conn = func_ident, line.split()[5]
+            output.append(new_conn)
+
+    return output
+
+
 def origin_country(item_list):
     """
     Given a list of IP addresses it will find the its country of origin.
     """
     gip = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
+    func_ident = item_list[0][0]
     output = []
 
     for item in item_list:
 
-        if item[0] == 'found_login':
+        if func_ident == 'found_login':
             geo = gip.country_name_by_addr(item[5])
             out = item[0], item[1], item[2], item[3], item[4], item[5], geo
             output.append(out)
@@ -121,16 +139,33 @@ def origin_country(item_list):
     return output
 
 
+def count_list(item_list):
+    """
+    Counts the occurence of a list item thats returned.
+    """
+    func_ident = item_list[0][0]
+    counts = defaultdict(int)
+    output = func_ident
+
+    if func_ident == 'source_ip':
+        for item in item_list:
+            counts[item[1]] += 1
+
+    output = func_ident, dict(counts)
+    return output
+
+
 def show_results(items):
     """
-    Sorts the dictionary by value in decending order and prints the result to stdout.
+    Searches for a function identifier within items that describes how to presess the data and how
+    to present the output on stdout.
     """
     result = []
 
     if items[0][0] == 'found_login':
-        for it in items:
-            login = '{0:<9} {1:<8} {2:<10} {3:<16} {4:<15} {5:>12}'.format(it[1], it[2], it[3],
-                                                                           it[4], it[5], it[6])
+        for itt in items:
+            login = '{0:<9} {1:<8} {2:<10} {3:<16} {4:<15} {5:>12}'.format(itt[1], itt[2], itt[3],
+                                                                           itt[4], itt[5], itt[6])
             result.append(login)
 
         banner = '{0:<9} {1:<8} {2:<10} {3:<16} {4:<15} {5:>12}'.format('Date', 'Time', 'Username',
@@ -140,6 +175,15 @@ def show_results(items):
         print '-' * 76
         for data in sorted(result, reverse=True):
             print data
+
+        print ''
+
+    if 'source_ip' in items:
+        dic = items[1]
+        for key, value in sorted(dic.iteritems(), key=operator.itemgetter(1), reverse=True):
+            print '{0:>5}  {1}'.format(value, key)
+
+        print ''
 
 
 def process_args(args):
@@ -156,6 +200,11 @@ def process_args(args):
         list_items = found_login(honssh_logs)
         show_items = origin_country(list_items)
         show_results(show_items)
+
+    if args.source:
+        list_items = source_ip(honssh_logs)
+        dict_items = count_list(list_items)
+        show_results(dict_items)
 
 
 def main():
