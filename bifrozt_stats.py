@@ -29,7 +29,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 
 import argparse
@@ -60,6 +60,9 @@ def parse_args():
     honssh.add_argument('-P', dest='passwd', help='Frequent passwords', action='store_true')
     honssh.add_argument('-U', dest='usrnam', help='Frequent usernames', action='store_true')
     honssh.add_argument('-C', dest='combos', help='Frequent combinations', action='store_true')
+
+    out = parser.add_argument_group('- Output control')
+    out.add_argument('-n', dest='number', help='Number of lines displayed (default: 50)')
 
     logs = parser.add_argument_group('- Log locations')
     logs.add_argument('-H', dest='logdir', help='HonSSH logs ({0})'.format(hlog), default=hlog)
@@ -192,12 +195,13 @@ def count_list(item_list, fid):
     return dict(counts)
 
 
-def show_results(items, fid):
+def show_results(items, fid, nol):
     """
     Checks the function identifier and processes the output accordingly before the results are
     printed to stdout.
     """
     result = []
+    stdout_list = []
 
     if fid == 'access':
         header = '-' * 76
@@ -211,7 +215,7 @@ def show_results(items, fid):
 
         print '{0}\n{1}'.format(banner, header)
 
-        for data in sorted(result, reverse=True):
+        for data in sorted(result[:nol], reverse=True):
             print data
         print ''
 
@@ -219,50 +223,65 @@ def show_results(items, fid):
         banner = '   {0}   {1}'.format('Hits', 'IP address')
         header = '-' * 26
 
+        for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
+            stdout_list.append('{0:>7}   {1}'.format(value, key))
+
         print '{0}\n{1}'.format(banner, header)
 
-        for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
-            print '{0:>7}   {1}'.format(value, key)
+        for std in stdout_list[:nol]:
+            print std
         print ''
 
     if fid == 'origin':
         banner = '   {0}   {1}'.format('Hits', 'Country of origin')
         header = '-' * 36
         
-        print '{0}\n{1}'.format(banner, header)
-        
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
-            print '{0:>7}   {1}'.format(value, key)
+            stdout_list.append('{0:>7}   {1}'.format(value, key))
+
+        print '{0}\n{1}'.format(banner, header)
+
+        for std in stdout_list[:nol]:
+            print std
         print ''
 
     if fid == 'passwd':
         banner = '  {0}   {1}'.format('Tries', 'Password')
         header = '-' * 36
-
-        print '{0}\n{1}'.format(banner, header)
         
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
-            print '{0:>7}   {1}'.format(value, key)
+            stdout_list.append('{0:>7}   {1}'.format(value, key))
+
+        print '{0}\n{1}'.format(banner, header)
+
+        for std in stdout_list[:nol]:
+            print std
         print ''
 
     if fid == 'usrnam':
         banner = '  {0}   {1}'.format('Tries', 'Username')
         header = '-' * 42
-
-        print '{0}\n{1}'.format(banner, header)
         
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
-            print '{0:>7}   {1}'.format(value, key)
+            stdout_list.append('{0:>7}   {1}'.format(value, key))
+
+        print '{0}\n{1}'.format(banner, header)
+
+        for std in stdout_list[:nol]:
+            print std
         print ''
 
     if fid == 'combos':
         banner = '  {0}   {1}'.format('Tries', 'Combinations')
         header = '-' * 48
-
-        print '{0}\n{1}'.format(banner, header)
         
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
-            print '{0:>7}   {1}'.format(value, key)
+            stdout_list.append('{0:>7}   {1}'.format(value, key))
+
+        print '{0}\n{1}'.format(banner, header)
+
+        for std in stdout_list[:nol]:
+            print std
         print ''
 
 
@@ -270,42 +289,47 @@ def process_args(args):
     """
     Process the command line arguments.
     """
+    number = 50
+
     if not os.path.isdir(args.logdir):
         print 'ERROR: {0} does not appear to exist!'.format(args.logdir)
         sys.exit(1)
 
     honssh_logs = find_logs(args.logdir)
 
+    if args.number:
+        number = int(args.number)
+
     if args.access:
         list_items = found_login(honssh_logs)
         show_items = origin_country(list_items, 'access')
-        show_results(show_items, 'access')
+        show_results(show_items, 'access', number)
 
     if args.source:
         list_items = source_ip(honssh_logs)
         dict_items = count_list(list_items, 'source')
-        show_results(dict_items, 'source')
+        show_results(dict_items, 'source', number)
 
     if args.origin:
         list_items = source_ip(honssh_logs)
         orig_items = origin_country(list_items, 'origin')
         cunt_items = count_list(orig_items, 'origin')
-        show_results(cunt_items, 'origin')
+        show_results(cunt_items, 'origin', number)
 
     if args.passwd:
         list_items = auth_info(honssh_logs)
         auth_items = count_list(list_items, 'passwd')
-        show_results(auth_items, 'passwd')
+        show_results(auth_items, 'passwd', number)
 
     if args.usrnam:
         list_items = auth_info(honssh_logs)
         auth_items = count_list(list_items, 'usrnam')
-        show_results(auth_items, 'usrnam')
+        show_results(auth_items, 'usrnam', number)
 
     if args.combos:
         list_items = auth_info(honssh_logs)
         auth_items = count_list(list_items, 'combos')
-        show_results(auth_items, 'combos')
+        show_results(auth_items, 'combos', number)
 
 def main():
     """
