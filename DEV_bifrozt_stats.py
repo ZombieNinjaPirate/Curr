@@ -30,7 +30,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = 'DEV 0.0.6'
+__version__ = '0.0.7'
 
 
 import argparse
@@ -42,15 +42,6 @@ import sys
 from collections import defaultdict
 
 
-#
-#   DEV NOTES:
-#   - separate function for GeoIP lookups
-#   - printing results should only be done by one function
-#       - use other functions to pass output type indicator
-#   - valid username/password combo should indicate what username and password
-#     that was used
-#
-
 def parse_args():
     """
     Defines the command line arguments.
@@ -60,20 +51,14 @@ def parse_args():
     parser = argparse.ArgumentParser('Gather data from HonSSH log files')
 
     attacker = parser.add_argument_group('- Attacker data')
-    attacker.add_argument('-A', dest='access', help='Attackers with a valid login',
-                          action='store_true')
-    attacker.add_argument('-S', dest='source', help='Connection pr. IP address',
-                          action='store_true')
-    attacker.add_argument('-O', dest='origin', help='Connection pr. country',
-                          action='store_true')
+    attacker.add_argument('-A', dest='access', help='Valid login found', action='store_true')
+    attacker.add_argument('-S', dest='source', help='Connection/IP address', action='store_true')
+    attacker.add_argument('-O', dest='origin', help='Connection/country', action='store_true')
 
     auth = parser.add_argument_group('- Authentication data')
-    auth.add_argument('-P', dest='passwd', help='Frequent passwords',
-                      action='store_true')
-    auth.add_argument('-U', dest='usrnam', help='Frequent usernames',
-                      action='store_true')
-    auth.add_argument('-C', dest='combos', help='Frequent combinations',
-                      action='store_true')
+    auth.add_argument('-P', dest='passwd', help='Frequent passwords', action='store_true')
+    auth.add_argument('-U', dest='usrnam', help='Frequent usernames', action='store_true')
+    auth.add_argument('-C', dest='combos', help='Frequent combinations', action='store_true')
 
     logs = parser.add_argument_group('- Location of log files')
     logs.add_argument('-L', dest='logdir', help='({0})'.format(dlog), default=dlog)
@@ -85,7 +70,7 @@ def parse_args():
 
 def find_logs(logpath):
     """
-    Searches the logpath and appends all the files that matches to a returned list object
+    Searches the logpath and appends all the files that matches to a returned list object.
     """
     log_files = []
     lines_log = []
@@ -108,39 +93,35 @@ def find_logs(logpath):
 
 def found_login(loglines):
     """
-    Parses loglines for entries that shows a valid username/password was found.
-    The date, time, IP address, username and password is appended to the output
-    list and returned from the function.
+    Parses loglines for entries that shows a valid username/password was found. The date, time, IP
+    address, username and password is appended to the output list and returned from the function.
     """
+    func_ident = 'found_login'
     output = []
 
     for line in loglines:
         if 'LOGIN_SUCCESSFUL' in line:
-            login_ok = line.split()
-            date = login_ok[4].split('_')[0]
-            time = login_ok[4].split('_')[1]
-            ipadd = login_ok[5]
-            output.append('{0} {1} {2}'.format(date, time, ipadd))
+            login = line.split()[4:8]
+            date = login[0].split('_')[0]
+            time = login[0].split('_')[1]
+            out = func_ident, date, time, login[2], login[3], login[1]
+            output.append(out)
 
     return output
 
 
-def test(item_list):
-    print item_list[0]
-
-
-
 def source_ip(loglines):
     """
-    Parses all the loglines to find entries indocating a new connection has been made.
-    From the matching entries in loglines it will extract the IP address and append it
-    to the output list and return it once all loglines has been checked.
+    Parses all the loglines to find entries indocating a new connection has been made. From the
+    matching entries in loglines it will extract the IP address and append it to the output list
+    thats returned from the function.
     """
+    func_ident = 'source_ip'
     output = []
 
     for line in loglines:
         if 'CONNECTION_MADE' in line:
-            new_conn = line.split()[5]
+            new_conn = func_ident, line.split()[5]
             output.append(new_conn)
 
     return output
@@ -154,45 +135,54 @@ def origin_country(item_list):
     output = []
 
     for item in item_list:
-        geo = gip.country_name_by_addr(item)
-        output.append(geo)
+
+        if item[0] == 'found_login':
+            geo = gip.country_name_by_addr(item[5])
+            out = item[0], item[1], item[2], item[3], item[4], item[5], geo
+            output.append(out)
 
     return output
 
 
 def count_list(item_list):
     """
-    Counts the occurence of a list item.
+    Counts the occurence of a list item thats returned.
     """
     counts = defaultdict(int)
 
-    for item in item_list:
-        counts[item] += 1
+    if item_list[0][0] == 'source_ip':
+        for item in item_list:
+            counts[item[1]] += 1
 
-    return dict(counts)
+    print dict(counts)
 
 
-def show_results(dic):
+def show_results(items):
     """
     Sorts the dictionary by value in decending order and prints the result to stdout.
     """
-    # Valid login combo found
-    #
-    # hd0 = ".----------.--------.----------------.-------------."
-    # hd1 = '|   Date   :  Time  :   IP address   :   Country   |'
-    # hd2 = "'----------'--------'----------------'-------------'"
-    # print '{0}\n{1}\n{2}'.format(hd0, hd1, hd2)
-    # for data in sorted(output, reverse=True):
-    #     data = data.split()
-    #     time = data[0].replace('_', '   ')
-    #     ipad = data[1]
-    #     geo = gip.country_name_by_addr(data[1])
-    #     print '  {0}   {1}  \t{2}'.format(time, ipad, geo)
+    result = []
 
-    for key, value in sorted(dic.iteritems(), key=operator.itemgetter(1), reverse=True):
-        print '{0:>5}  {1}'.format(value, key)
+    if items[0][0] == 'found_login':
+        for itt in items:
+            login = '{0:<9} {1:<8} {2:<10} {3:<16} {4:<15} {5:>12}'.format(itt[1], itt[2], itt[3],
+                                                                           itt[4], itt[5], itt[6])
+            result.append(login)
 
-    print '\n'
+        banner = '{0:<9} {1:<8} {2:<10} {3:<16} {4:<15} {5:>12}'.format('Date', 'Time', 'Username',
+                                                                'Password', 'IP address', 'Country')
+
+        print banner
+        print '-' * 76
+        for data in sorted(result, reverse=True):
+            print data
+
+        print ''
+
+    #for key, value in sorted(dic.iteritems(), key=operator.itemgetter(1), reverse=True):
+    #    print '{0:>5}  {1}'.format(value, key)
+
+    #print '\n'
 
 
 def process_args(args):
@@ -207,24 +197,14 @@ def process_args(args):
 
     if args.access:
         list_items = found_login(honssh_logs)
-        test(list_items)
+        show_items = origin_country(list_items)
+        show_results(show_items)
 
     if args.source:
         list_items = source_ip(honssh_logs)
-        dict_items = count_list(list_items)
-        show_results(dict_items)
-
-    if args.origin:
-        list_items = source_ip(honssh_logs)
-        orig_items = origin_country(list_items)
-        dict_items = count_list(orig_items)
-        show_results(dict_items)
-
-    #if args.passwd:
-
-    #if args.usrnam:
-
-    #if args.combos:
+        count_list(list_items)
+        #dict_items = count_list(list_items)
+        #show_results(dict_items)
 
 
 def main():
