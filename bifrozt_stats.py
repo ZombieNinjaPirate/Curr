@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 
 
@@ -30,7 +29,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.0.8'
+__version__ = '0.0.9'
 
 
 import argparse
@@ -46,17 +45,20 @@ def parse_args():
     """
     Defines the command line arguments.
     """
-    dlog = '/opt/honssh/logs'
+    hlog = '/opt/honssh/logs'
 
-    parser = argparse.ArgumentParser('Gather data from HonSSH log files')
+    parser = argparse.ArgumentParser('Bifrozt data extraction script')
 
-    attacker = parser.add_argument_group('- Attacker data')
-    attacker.add_argument('-A', dest='access', help='Valid login found', action='store_true')
-    attacker.add_argument('-S', dest='source', help='Connection/IP address', action='store_true')
-    attacker.add_argument('-O', dest='origin', help='Connection/country', action='store_true')
+    honssh = parser.add_argument_group('- HonSSH data')
+    honssh.add_argument('-A', dest='access', help='Valid login found', action='store_true')
+    honssh.add_argument('-S', dest='source', help='Connection/IP address', action='store_true')
+    honssh.add_argument('-O', dest='origin', help='Connection/country', action='store_true')
+    honssh.add_argument('-P', dest='passwd', help='Frequent passwords', action='store_true')
+    honssh.add_argument('-U', dest='usrnam', help='Frequent usernames', action='store_true')
+    honssh.add_argument('-C', dest='combos', help='Frequent combinations', action='store_true')
 
-    logs = parser.add_argument_group('- Location of log files')
-    logs.add_argument('-L', dest='logdir', help='({0})'.format(dlog), default=dlog)
+    logs = parser.add_argument_group('- Log locations')
+    logs.add_argument('-H', dest='logdir', help='HonSSH logs ({0})'.format(hlog), default=hlog)
 
     args = parser.parse_args()
 
@@ -119,6 +121,22 @@ def source_ip(loglines):
     return output
 
 
+def auth_info(loglines):
+    """
+    Parses loglines to extracts attempted usernames and passwords. Both of these objects are added
+    to the output list that will be returned at the end of this function.
+    """
+    output = []
+
+    for line in loglines:
+        if 'LOGIN_' in line:
+            login = line.split()
+            out = login[6], login[7]
+            output.append(out)
+
+    return output
+
+
 def origin_country(item_list, fid):
     """
     Given a list of IP addresses it will find the its country of origin.
@@ -154,6 +172,19 @@ def count_list(item_list, fid):
         for item in item_list:
             counts[item] += 1
 
+    if fid == 'passwd':
+        for item in item_list:
+            counts[item[1]] += 1        
+
+    if fid == 'usrnam':
+        for item in item_list:
+            counts[item[0]] += 1
+
+    if fid == 'combos':
+        for item in item_list:
+            item = '{0}/{1}'.format(item[0], item[1])
+            counts[item] += 1
+
     return dict(counts)
 
 
@@ -175,6 +206,7 @@ def show_results(items, fid):
             result.append(login)
 
         print '{0}\n{1}'.format(banner, header)
+
         for data in sorted(result, reverse=True):
             print data
         print ''
@@ -184,19 +216,49 @@ def show_results(items, fid):
         header = '-' * 26
 
         print '{0}\n{1}'.format(banner, header)
+
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             print '{0:>7}   {1}'.format(value, key)
-
         print ''
 
     if fid == 'origin':
         banner = '   {0}   {1}'.format('Hits', 'Country of origin')
         header = '-' * 36
-
+        
         print '{0}\n{1}'.format(banner, header)
+        
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             print '{0:>7}   {1}'.format(value, key)
+        print ''
 
+    if fid == 'passwd':
+        banner = '  {0}   {1}'.format('Tries', 'Password')
+        header = '-' * 36
+
+        print '{0}\n{1}'.format(banner, header)
+        
+        for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
+            print '{0:>7}   {1}'.format(value, key)
+        print ''
+
+    if fid == 'usrnam':
+        banner = '  {0}   {1}'.format('Tries', 'Username')
+        header = '-' * 42
+
+        print '{0}\n{1}'.format(banner, header)
+        
+        for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
+            print '{0:>7}   {1}'.format(value, key)
+        print ''
+
+    if fid == 'combos':
+        banner = '  {0}   {1}'.format('Tries', 'Combinations')
+        header = '-' * 48
+
+        print '{0}\n{1}'.format(banner, header)
+        
+        for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
+            print '{0:>7}   {1}'.format(value, key)
         print ''
 
 
@@ -226,6 +288,20 @@ def process_args(args):
         cunt_items = count_list(orig_items, 'origin')
         show_results(cunt_items, 'origin')
 
+    if args.passwd:
+        list_items = auth_info(honssh_logs)
+        auth_items = count_list(list_items, 'passwd')
+        show_results(auth_items, 'passwd')
+
+    if args.usrnam:
+        list_items = auth_info(honssh_logs)
+        auth_items = count_list(list_items, 'usrnam')
+        show_results(auth_items, 'usrnam')
+
+    if args.combos:
+        list_items = auth_info(honssh_logs)
+        auth_items = count_list(list_items, 'combos')
+        show_results(auth_items, 'combos')
 
 def main():
     """
