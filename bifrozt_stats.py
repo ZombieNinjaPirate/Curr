@@ -305,7 +305,7 @@ def process_args(args):
 
 def main():
     """
-    Do what Main does best...
+    Do what Main does best.
     """
     args = parse_args()
     process_args(args)
