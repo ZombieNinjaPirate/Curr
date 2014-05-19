@@ -213,10 +213,13 @@ def show_results(items, fid, nol):
                                                                            itt[3], itt[4], itt[5])
             result.append(login)
 
+        for data in sorted(result, reverse=True):
+            stdout_list.append(data)
+
         print '{0}\n{1}'.format(banner, header)
 
-        for data in sorted(result[:nol], reverse=True):
-            print data
+        for std in stdout_list[:nol]:
+            print std
         print ''
 
     if fid == 'source':
