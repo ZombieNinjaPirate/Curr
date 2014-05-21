@@ -2,6 +2,10 @@
 
 
 """
+This script is used on the Bifrozt honeypot router to extract data from various system and attack logs. 
+"""
+
+"""
 Copyright (c) 2014, Are Hansen - Honeypot Development.
 
 All rights reserved.
