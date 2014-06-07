@@ -2,8 +2,9 @@
 
 
 """
-This script is used on the Bifrozt honeypot router to extract data from various system and attack logs. 
+Used on the Bifrozt honeypot router to extract data from various system and attack logs. 
 """
+
 
 """
 Copyright (c) 2014, Are Hansen - Honeypot Development.
@@ -33,7 +34,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.1.2'
+__version__ = '0.1.5'
 
 
 import argparse
@@ -68,23 +69,32 @@ def parse_args():
     out = parser.add_argument_group('- Output control')
     out.add_argument('-n', dest='number', help='Number of lines displayed (default: 50)')
 
-    logs = parser.add_argument_group('- Log locations')
-    logs.add_argument('-H', dest='logdir', help='HonSSH logs ({0})'.format(hlog), default=hlog)
+    logs = parser.add_argument_group('- Log directory')
+    logs.add_argument('-H', dest='hondir', help='HonSSH logs ({0})'.format(hlog))
 
     args = parser.parse_args()
 
     return args
 
 
-def find_logs(logpath):
+def find_honssh_logs(logpath):
     """
-    Searches the logpath and appends all the files that matches to a returned list object.
+    Searches the logpath for the daily files created by HonSSH.
+    The lines of the daily logs can be converted into list items of 5 by spitting them on ','.
+
+        Index[0] = YYYY-mm-dd HH:MM:SS
+        Index[1] = ip.ad.dr.ess
+        Index[2] = username
+        Index[3] = password
+        Index[4] = (success = 1, failed = 0)
+
+    The lines of the daily logs are appended to the lines_log list and returned from this function.
     """
     log_files = []
     lines_log = []
 
     os.chdir(logpath)
-    for logs in glob.glob('honssh.log*'):
+    for logs in glob.glob('201*'):
         log_files.append(logs)
 
     if len(log_files) == 0:
@@ -101,33 +111,31 @@ def find_logs(logpath):
 
 def found_login(loglines):
     """
-    Parses loglines for entries that shows a valid username/password was found. The date, time, IP
-    address, username and password is appended to the output list and returned from the function.
+    Checks for successful logins in the HonSSH loglines. This is done by itterating trough the
+    loglines while splitting on ','. The last index of the list item thats created by doing so will
+    either be a 0 (failed login) or a 1 (successful login). Any line with a 1 in index[4] will be
+    appended to the output list and returned from the function.
     """
     output = []
 
     for line in loglines:
-        if 'LOGIN_SUCCESSFUL' in line:
-            login = line.split()[4:8]
-            date = login[0].split('_')[0]
-            time = login[0].split('_')[1]
-            out = date, time, login[2], login[3], login[1]
-            output.append(out)
+        line = line.split(',')
+        if '1' in line[4]:
+            output.append('{0} {1} {2} {3}'.format(line[0], line[1], line[2], line[3]))
 
     return output
 
 
 def source_ip(loglines):
     """
-    Parses all the loglines to find entries indocating a new connection has been made. From the
-    matching entries in loglines it will extract the IP address and append it to the output list
-    thats returned from the function.
+    Splits the loglines on ',' and assumes that there will be an IP address at index[1], this IP
+    address is appended to the output list and returned from the function.
     """
     output = []
 
     for line in loglines:
-        if 'CONNECTION_MADE' in line:
-            output.append(line.split()[5])
+            line = line.split(',')
+            output.append(line[1])
 
     return output
 
@@ -140,27 +148,34 @@ def auth_info(loglines):
     output = []
 
     for line in loglines:
-        if 'LOGIN_' in line:
-            login = line.split()
-            out = login[6], login[7]
-            output.append(out)
+            line  = line.split(',')
+            output.append('{0} {1}'.format(line[2], line[3]))
 
     return output
 
 
 def origin_country(item_list, fid):
     """
-    Given a list of IP addresses it will find the its country of origin.
+    Looks up the origin country of the provided IP address.
     """
     gip = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
     output = []
 
+    # Splits the string in item_list on blank spaces and assumes that index[2] will contain an IP
+    # address. The index[1] will be checked against the GeoIP database to find the country of origin
+    # that IP address belongs to. The string will be reassembled with the country name appended to
+    # the end of the string before the string is appended to the output list and returned from the
+    # function. 
     if fid == 'access':
         for item in item_list:
-            geo = gip.country_name_by_addr(item[4])
-            out = item[0], item[1], item[2], item[3], item[4], geo
+            item = item.split(' ')
+            geo = gip.country_code_by_addr(item[2])
+            out = item[0], item[1], item[3], item[4], item[2], geo
             output.append(out)
 
+    # The item_list, when fid == origin, will only have IP addreses in it. The origin country of
+    # these IP addresses are checked agains the GeoIP database and the country of origin is appended
+    # to the output list and returned from the function.
     if fid == 'origin':
         for item in item_list:
             geo = gip.country_name_by_addr(item)
@@ -185,14 +200,17 @@ def count_list(item_list, fid):
 
     if fid == 'passwd':
         for item in item_list:
+            item = item.split(' ')
             counts[item[1]] += 1     
 
     if fid == 'usrnam':
         for item in item_list:
+            item = item.split(' ')
             counts[item[0]] += 1
 
     if fid == 'combos':
         for item in item_list:
+            item = item.split(' ')
             item = '{0}/{1}'.format(item[0], item[1])
             counts[item] += 1
 
@@ -208,27 +226,34 @@ def show_results(items, fid, nol):
     stdout_list = []
 
     if fid == 'access':
-        header = '-' * 76
-        banner = '{0:<9} {1:<8} {2:<10} {3:<16} {4:<15} {5:>12}'.format('Date', 'Time', 'Username',
-                                                                'Password', 'IP address', 'Country')
+        header = '-' * 85
+        banner = '  {0:<12} {1:<10} {4:<16} {5:<8} {2:<11} {3:<9}'.format('Date', 'Time', 'User',
+                                                                'Password', 'IP address', 'Origin')
+
 
         for itt in items:
-            login = '{0:<9} {1:<8} {2:<10} {3:<16} {4:<15} {5:>12}'.format(itt[0], itt[1], itt[2],
+            login = '  {0:<12} {1:<10} {4:<16} {5:<8} {2:<11} {3:<4}'.format(itt[0], itt[1], itt[2],
                                                                            itt[3], itt[4], itt[5])
+
             result.append(login)
 
         for data in sorted(result, reverse=True):
             stdout_list.append(data)
 
-        print '{0}\n{1}'.format(banner, header)
+        if len(result) == 0:
+            print '  {0}\n{1}'.format(banner, header)
+            print '\t\t\tNo successful logins yet'
+            print ''
+            sys.exit(1)
 
+        print '{0}\n{1}'.format(banner, header)
         for std in stdout_list[:nol]:
             print std
         print ''
 
     if fid == 'source':
         banner = '   {0}   {1}'.format('Hits', 'IP address')
-        header = '-' * 26
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -241,7 +266,7 @@ def show_results(items, fid, nol):
 
     if fid == 'origin':
         banner = '   {0}   {1}'.format('Hits', 'Country of origin')
-        header = '-' * 36
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -254,7 +279,7 @@ def show_results(items, fid, nol):
 
     if fid == 'passwd':
         banner = '  {0}   {1}'.format('Tries', 'Password')
-        header = '-' * 36
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -267,7 +292,7 @@ def show_results(items, fid, nol):
 
     if fid == 'usrnam':
         banner = '  {0}   {1}'.format('Tries', 'Username')
-        header = '-' * 42
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -280,7 +305,7 @@ def show_results(items, fid, nol):
 
     if fid == 'combos':
         banner = '  {0}   {1}'.format('Tries', 'Combinations')
-        header = '-' * 48
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -296,17 +321,22 @@ def process_args(args):
     """
     Process the command line arguments.
     """
+    # - verify that the HonSSH log directory exists
+    if args.hondir:
+        if not os.path.isdir(args.hondir):
+            print 'ERROR: {0} does not appear to exist!'.format(args.hondir)
+            sys.exit(1)
+
+        # - reads the HonSSH log lines into a list
+        honssh_logs = find_honssh_logs(args.hondir)
+
+    # - number of lines to output
     number = 50
-
-    if not os.path.isdir(args.logdir):
-        print 'ERROR: {0} does not appear to exist!'.format(args.logdir)
-        sys.exit(1)
-
-    honssh_logs = find_logs(args.logdir)
 
     if args.number:
         number = int(args.number)
 
+    # ----- HonSSH arguments ----- #
     if args.access:
         list_items = found_login(honssh_logs)
         show_items = origin_country(list_items, 'access')
@@ -314,6 +344,7 @@ def process_args(args):
 
     if args.source:
         list_items = source_ip(honssh_logs)
+        count_list(list_items, 'source')
         dict_items = count_list(list_items, 'source')
         show_results(dict_items, 'source', number)
 
@@ -349,4 +380,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
