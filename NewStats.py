@@ -2,8 +2,9 @@
 
 
 """
-This script is used on the Bifrozt honeypot router to extract data from various system and attack logs. 
+Used on the Bifrozt honeypot router to extract data from various system and attack logs. 
 """
+
 
 """
 Copyright (c) 2014, Are Hansen - Honeypot Development.
@@ -33,7 +34,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = 'DEV 0.1.4'
+__version__ = 'DEV 0.1.7'
 
 
 import argparse
@@ -42,11 +43,12 @@ import operator
 import os
 import sys
 try:
-    import GeoIP
+    import geoip2.database
 except ImportError:
-    print'\nERROR: GeoIP module not installed!\nsudo apt-get install python-geoip\n'
+    print'\nERROR: geoip2 module not installed!\nsudo pip install geoip2\n'
     sys.exit(1)
 from collections import defaultdict
+from os import path, access, R_OK
 
 
 def parse_args():
@@ -54,7 +56,6 @@ def parse_args():
     Defines the command line arguments.
     """
     hlog = '/opt/honssh/logs'
-    fwlog = '/var/log'
 
     parser = argparse.ArgumentParser('Bifrozt data extraction script')
 
@@ -66,15 +67,11 @@ def parse_args():
     honssh.add_argument('-U', dest='usrnam', help='Frequent usernames', action='store_true')
     honssh.add_argument('-C', dest='combos', help='Frequent combinations', action='store_true')
 
-    fwdata = parser.add_argument_group('- Firewall data')
-    fwdata.add_argument('-R', dest='rhost', help='Remote IP outbound', action='store_true')
-
     out = parser.add_argument_group('- Output control')
     out.add_argument('-n', dest='number', help='Number of lines displayed (default: 50)')
 
     logs = parser.add_argument_group('- Log directory')
     logs.add_argument('-H', dest='hondir', help='HonSSH logs ({0})'.format(hlog))
-    logs.add_argument('-F', dest='fwdir', help='Firewall logs ({0})'.format(fwlog))
 
     args = parser.parse_args()
 
@@ -111,31 +108,6 @@ def find_honssh_logs(logpath):
                 lines_log.append(line)
 
     return lines_log
-
-
-def find_fwlogs_dir(logpath):
-    """
-    Find the firewall.log files and read the lines into the lines_log list before the list is
-    returned from the function.
-    """
-    print 'DEBUG: -R'
-    log_files = []
-    lines_log = []
-
-    os.chdir(logpath)
-    for logs in glob.glob('firewall.*'):
-        log_files.append(logs)
-
-    if len(log_files) == 0:
-        print 'ERROR: No honssh.log files found in "{0}"'.format(logpath)
-        sys.exit(1)
-
-    for logs in log_files:
-        with open(logs, 'r') as log:
-            for line in log.readlines():
-                lines_log.append(line)
-
-    print lines_log[-1]
 
 
 def found_login(loglines):
@@ -187,7 +159,16 @@ def origin_country(item_list, fid):
     """
     Looks up the origin country of the provided IP address.
     """
-    gip = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
+    countrydb = '/devel/Bifrozt_LOGS/GeoLite2-Country.mmdb'
+
+    if path.isfile(countrydb) and access(countrydb, R_OK):
+        pass
+    else:
+        print 'ERROR: GeoIP2 database was not found'
+        sys.exit(1)
+
+    reader = geoip2.database.Reader(countrydb)
+
     output = []
 
     # Splits the string in item_list on blank spaces and assumes that index[2] will contain an IP
@@ -198,8 +179,8 @@ def origin_country(item_list, fid):
     if fid == 'access':
         for item in item_list:
             item = item.split(' ')
-            geo = gip.country_code_by_addr(item[2])
-            out = item[0], item[1], item[3], item[4], item[2], geo
+            response = reader.country(item[2])
+            out = item[0], item[1], item[3], item[4], item[2], response.country.iso_code
             output.append(out)
 
     # The item_list, when fid == origin, will only have IP addreses in it. The origin country of
@@ -207,8 +188,8 @@ def origin_country(item_list, fid):
     # to the output list and returned from the function.
     if fid == 'origin':
         for item in item_list:
-            geo = gip.country_name_by_addr(item)
-            output.append(geo)
+            response = reader.country(item)
+            output.append(response.country.name)
 
     return output
 
@@ -255,13 +236,13 @@ def show_results(items, fid, nol):
     stdout_list = []
 
     if fid == 'access':
-        header = '-' * 77
-        banner = '{0:<12} {1:<11} {2:<10} {3:<13} {4:<15} {5:<9}'.format('Date', 'Time', 'Username',
-                                                                'Password', 'IP address', 'Country')
+        header = '-' * 85
+        banner = '  {0:<12} {1:<10} {4:<16} {5:<8} {2:<15} {3:<9}'.format('Date', 'Time', 'User',
+                                                                'Password', 'IP address', 'Origin')
 
 
         for itt in items:
-            login = '  {0:<12} {1:<11} {2:<10} {3:<13} {4:<15} {5:>4}'.format(itt[0], itt[1], itt[2],
+            login = '  {0:<12} {1:<10} {4:<18} {5:<6} {2:<15} {3:<14}'.format(itt[0], itt[1], itt[2],
                                                                            itt[3], itt[4], itt[5])
 
             result.append(login)
@@ -275,13 +256,14 @@ def show_results(items, fid, nol):
             print ''
             sys.exit(1)
 
+        print '{0}\n{1}'.format(banner, header)
         for std in stdout_list[:nol]:
             print std
         print ''
 
     if fid == 'source':
         banner = '   {0}   {1}'.format('Hits', 'IP address')
-        header = '-' * 27
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -294,7 +276,7 @@ def show_results(items, fid, nol):
 
     if fid == 'origin':
         banner = '   {0}   {1}'.format('Hits', 'Country of origin')
-        header = '-' * 36
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -307,7 +289,7 @@ def show_results(items, fid, nol):
 
     if fid == 'passwd':
         banner = '  {0}   {1}'.format('Tries', 'Password')
-        header = '-' * 36
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -320,7 +302,7 @@ def show_results(items, fid, nol):
 
     if fid == 'usrnam':
         banner = '  {0}   {1}'.format('Tries', 'Username')
-        header = '-' * 42
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -333,7 +315,7 @@ def show_results(items, fid, nol):
 
     if fid == 'combos':
         banner = '  {0}   {1}'.format('Tries', 'Combinations')
-        header = '-' * 48
+        header = '-' * 33
 
         for key, value in sorted(items.iteritems(), key=operator.itemgetter(1), reverse=True):
             stdout_list.append('{0:>7}   {1}'.format(value, key))
@@ -349,38 +331,21 @@ def process_args(args):
     """
     Process the command line arguments.
     """
-    if not args.hondir and not args.fwdir:
-        print 'ERROR: You did not specify any log directory, please use -H/-F'
-        sys.exit(1)
-
     # - verify that the HonSSH log directory exists
     if args.hondir:
         if not os.path.isdir(args.hondir):
             print 'ERROR: {0} does not appear to exist!'.format(args.hondir)
             sys.exit(1)
 
-        # - reads the HonSSH log lines into a list
-        honssh_logs = find_honssh_logs(args.hondir)
 
-    # - verify that the firewall log directory exists
-    if args.fwdir:
-        if not os.path.isdir(args.fwdir):
-            print 'ERROR: {0} does not appear to exist!'.format(args.fwdir)
-            sys.exit(1)
+    honssh_logs = find_honssh_logs(args.hondir)
 
-        # - reads the firewall log lines into a list
-        firewall_logs = find_fwlogs_dir(args.fwdir)
-
-    print 'DEBUG: -R3'
     # - number of lines to output
     number = 50
 
     if args.number:
         number = int(args.number)
 
-    #
-    # ----- HonSSH arguments ----- #
-    #
     if args.access:
         list_items = found_login(honssh_logs)
         show_items = origin_country(list_items, 'access')
@@ -412,12 +377,6 @@ def process_args(args):
         list_items = auth_info(honssh_logs)
         auth_items = count_list(list_items, 'combos')
         show_results(auth_items, 'combos', number)
-
-    #
-    # ----- Firewall arguments -----
-    #
-
-    #if args.destip:
 
 
 def main():
