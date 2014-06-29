@@ -34,7 +34,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = 'DEV 0.1.7'
+__version__ = '0.1.6'
 
 
 import argparse
@@ -43,12 +43,11 @@ import operator
 import os
 import sys
 try:
-    import geoip2.database
+    import GeoIP
 except ImportError:
-    print'\nERROR: geoip2 module not installed!\nsudo pip install geoip2\n'
+    print'\nERROR: GeoIP module not installed!\nsudo apt-get install python-geoip\n'
     sys.exit(1)
 from collections import defaultdict
-from os import path, access, R_OK
 
 
 def parse_args():
@@ -57,6 +56,17 @@ def parse_args():
     """
     hlog = '/opt/honssh/logs'
 
+    #
+    #   DEVELOPMENT NOTES
+    #
+    #   - argument that presents data according to search string, this could be passed together with
+    #     the other arguments or alone
+    #   -- search by IP address or the first and/or second octet of the IP address
+    #   -- search by country 
+    #   - attack summary
+    #   - parse the downloads.log file
+    #   - better formatting of the -A output
+    #
     parser = argparse.ArgumentParser('Bifrozt data extraction script')
 
     honssh = parser.add_argument_group('- HonSSH data')
@@ -70,8 +80,14 @@ def parse_args():
     out = parser.add_argument_group('- Output control')
     out.add_argument('-n', dest='number', help='Number of lines displayed (default: 50)')
 
+    search = parser.add_argument_group('- Show data used by a particular attacker')
+    search.add_argument('-QP', dest='qpasswd', help='Show passwords used by IP', nargs=1, type=str)
+    search.add_argument('-QU', dest='qusrnam', help='Show usernames used by IP', nargs=1, type=str)
+    search.add_argument('-QC', dest='qcombos', help='Show combintations used by IP', nargs=1,
+                        type=str)
+
     logs = parser.add_argument_group('- Log directory')
-    logs.add_argument('-H', dest='hondir', help='HonSSH logs ({0})'.format(hlog))
+    logs.add_argument('-H', dest='hondir', help='HonSSH logs ({0})'.format(hlog), default=hlog)
 
     args = parser.parse_args()
 
@@ -79,8 +95,7 @@ def parse_args():
 
 
 def find_honssh_logs(logpath):
-    """
-    Searches the logpath for the daily files created by HonSSH.
+    """Searches the logpath for the daily files created by HonSSH.
     The lines of the daily logs can be converted into list items of 5 by spitting them on ','.
 
         Index[0] = YYYY-mm-dd HH:MM:SS
@@ -111,12 +126,10 @@ def find_honssh_logs(logpath):
 
 
 def found_login(loglines):
-    """
-    Checks for successful logins in the HonSSH loglines. This is done by itterating trough the
+    """Checks for successful logins in the HonSSH loglines. This is done by itterating trough the
     loglines while splitting on ','. The last index of the list item thats created by doing so will
     either be a 0 (failed login) or a 1 (successful login). Any line with a 1 in index[4] will be
-    appended to the output list and returned from the function.
-    """
+    appended to the output list and returned from the function. """
     output = []
 
     for line in loglines:
@@ -128,10 +141,8 @@ def found_login(loglines):
 
 
 def source_ip(loglines):
-    """
-    Splits the loglines on ',' and assumes that there will be an IP address at index[1], this IP
-    address is appended to the output list and returned from the function.
-    """
+    """Splits the loglines on ',' and assumes that there will be an IP address at index[1], this IP
+    address is appended to the output list and returned from the function. """
     output = []
 
     for line in loglines:
@@ -142,10 +153,8 @@ def source_ip(loglines):
 
 
 def auth_info(loglines):
-    """
-    Parses loglines to extracts attempted usernames and passwords. Both of these objects are added
-    to the output list that will be returned at the end of this function.
-    """
+    """Parses loglines to extracts attempted usernames and passwords. Both of these objects are added
+    to the output list that will be returned at the end of this function. """
     output = []
 
     for line in loglines:
@@ -156,19 +165,8 @@ def auth_info(loglines):
 
 
 def origin_country(item_list, fid):
-    """
-    Looks up the origin country of the provided IP address.
-    """
-    countrydb = '/devel/Bifrozt_LOGS/GeoLite2-Country.mmdb'
-
-    if path.isfile(countrydb) and access(countrydb, R_OK):
-        pass
-    else:
-        print 'ERROR: GeoIP2 database was not found'
-        sys.exit(1)
-
-    reader = geoip2.database.Reader(countrydb)
-
+    """Looks up the origin country of the provided IP address. """
+    gip = GeoIP.new(GeoIP.GEOIP_MEMORY_CACHE)
     output = []
 
     # Splits the string in item_list on blank spaces and assumes that index[2] will contain an IP
@@ -179,8 +177,8 @@ def origin_country(item_list, fid):
     if fid == 'access':
         for item in item_list:
             item = item.split(' ')
-            response = reader.country(item[2])
-            out = item[0], item[1], item[3], item[4], item[2], response.country.iso_code
+            geo = gip.country_code_by_addr(item[2])
+            out = item[0], item[1], item[3], item[4], item[2], geo
             output.append(out)
 
     # The item_list, when fid == origin, will only have IP addreses in it. The origin country of
@@ -188,16 +186,48 @@ def origin_country(item_list, fid):
     # to the output list and returned from the function.
     if fid == 'origin':
         for item in item_list:
-            response = reader.country(item)
-            output.append(response.country.name)
+            geo = gip.country_name_by_addr(item)
+            output.append(geo)
 
     return output
 
 
+def data_search(lines_data, query, fid):
+    """Searches the lines_data for the query. """
+    query_list = []
+    header = '=' * 19
+
+    if fid == 'passwd':
+        print '\n{0} Search query: "{1}" - Passwords\n'.format(header, query[0])
+        for line in lines_data:
+            if query[0] in line:
+                line = line.split(',')[3]
+                query_list.append(line.rstrip())
+
+    if fid == 'usrnam':
+        print '\n{0} Search query: "{1}" - Usernames\n'.format(header, query[0])
+        for line in lines_data:
+            if query[0] in line:
+                line = line.split(',')[2]
+                query_list.append(line.rstrip())
+
+    if fid == 'combos':
+        print '\n{0} Search query: "{1}" - Combinations\n'.format(header, query[0])
+        for line in lines_data:
+            if query[0] in line:
+                line = '{0}/{1}'.format(line.split(',')[2], line.split(',')[3])
+                query_list.append(line.rstrip())
+
+    counts = defaultdict(int)
+
+    for item in query_list:
+        counts[item] += 1
+
+    return dict(counts)
+
+
 def count_list(item_list, fid):
-    """
-    Counts the occurence of a list item thats returned.
-    """
+    """Counts the occurence of a list item thats returned. """
     counts = defaultdict(int)
 
     if fid == 'source':
@@ -228,21 +258,19 @@ def count_list(item_list, fid):
 
 
 def show_results(items, fid, nol):
-    """
-    Checks the function identifier and processes the output accordingly before the results are
-    printed to stdout.
-    """
+    """Checks the function identifier and processes the output accordingly before the results are
+    printed to stdout. """
     result = []
     stdout_list = []
 
     if fid == 'access':
         header = '-' * 85
-        banner = '  {0:<12} {1:<10} {4:<16} {5:<8} {2:<15} {3:<9}'.format('Date', 'Time', 'User',
+        banner = '  {0:<12} {1:<10} {4:<16} {5:<8} {2:<11} {3:<9}'.format('Date', 'Time', 'User',
                                                                 'Password', 'IP address', 'Origin')
 
 
         for itt in items:
-            login = '  {0:<12} {1:<10} {4:<18} {5:<6} {2:<15} {3:<14}'.format(itt[0], itt[1], itt[2],
+            login = '  {0:<12} {1:<10} {4:<16} {5:<8} {2:<11} {3:<4}'.format(itt[0], itt[1], itt[2],
                                                                            itt[3], itt[4], itt[5])
 
             result.append(login)
@@ -328,61 +356,79 @@ def show_results(items, fid, nol):
 
 
 def process_args(args):
-    """
-    Process the command line arguments.
-    """
-    # - verify that the HonSSH log directory exists
+    """Process the command line arguments."""
+    if args.hondir and len(sys.argv) <= 1:
+        print len(sys.argv)
+        print '\nUSAGE: {0} -h\n'.format(sys.argv[0].split('/')[-1])
+        sys.exit(1)
+
+    if not args.hondir and len(sys.argv) < 1:
+        print '\nUSAGE: {0} -h\n'.format(sys.argv[0].split('/')[-1])
+        sys.exit(1)
+
     if args.hondir:
         if not os.path.isdir(args.hondir):
             print 'ERROR: {0} does not appear to exist!'.format(args.hondir)
             sys.exit(1)
-
-
-    honssh_logs = find_honssh_logs(args.hondir)
-
-    # - number of lines to output
+        honssh_logs = find_honssh_logs(args.hondir)
+    else:
+        honssh_logs = find_honssh_logs(args.hondir)
+    
     number = 50
 
     if args.number:
         number = int(args.number)
 
-    if args.access:
+    if args.qpasswd:
+        number = 999999
+        list_items = data_search(honssh_logs, args.qpasswd, 'passwd')
+        show_results(list_items, 'passwd', number)
+
+    if args.qusrnam:
+        number = 999999
+        list_items = data_search(honssh_logs, args.qusrnam, 'usrnam')
+        show_results(list_items, 'usrnam', number)
+
+    if args.qcombos:
+        number = 999999
+        list_items = data_search(honssh_logs, args.qcombos, 'combos')
+        show_results(list_items, 'combos', number)
+
+    if args.access and not args.query:
         list_items = found_login(honssh_logs)
         show_items = origin_country(list_items, 'access')
         show_results(show_items, 'access', number)
 
-    if args.source:
+    if args.source and not args.query:
         list_items = source_ip(honssh_logs)
         count_list(list_items, 'source')
         dict_items = count_list(list_items, 'source')
         show_results(dict_items, 'source', number)
 
-    if args.origin:
+    if args.origin and not args.query:
         list_items = source_ip(honssh_logs)
         orig_items = origin_country(list_items, 'origin')
         cunt_items = count_list(orig_items, 'origin')
         show_results(cunt_items, 'origin', number)
 
-    if args.passwd:
+    if args.passwd and not args.query:
         list_items = auth_info(honssh_logs)
         auth_items = count_list(list_items, 'passwd')
         show_results(auth_items, 'passwd', number)
 
-    if args.usrnam:
+    if args.usrnam and not args.query:
         list_items = auth_info(honssh_logs)
         auth_items = count_list(list_items, 'usrnam')
         show_results(auth_items, 'usrnam', number)
 
-    if args.combos:
+    if args.combos and not args.query:
         list_items = auth_info(honssh_logs)
         auth_items = count_list(list_items, 'combos')
         show_results(auth_items, 'combos', number)
 
 
 def main():
-    """
-    Do what Main does best...
-    """
+    """Do what Main does best... """
     args = parse_args()
     process_args(args)
 
