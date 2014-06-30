@@ -34,7 +34,7 @@ THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 __author__ = 'Are Hansen'
 __date__ = '2014, May 15'
-__version__ = '0.1.6'
+__version__ = 'DEVELOPMENT 0.1.7'
 
 
 import argparse
@@ -77,14 +77,16 @@ def parse_args():
     honssh.add_argument('-U', dest='usrnam', help='Frequent usernames', action='store_true')
     honssh.add_argument('-C', dest='combos', help='Frequent combinations', action='store_true')
 
+    search = parser.add_argument_group('- ')
+    search.add_argument('-QP', dest='qpasswd', help='Show passwords used by IP or octet(s) in IP',
+                        nargs=1, type=str)
+    search.add_argument('-QU', dest='qusrnam', help='Show usernames used by IP or octet(s) in IP',
+                        nargs=1, type=str)
+    search.add_argument('-QC', dest='qcombos', help='Show combos used by IP or octet(s) in IP',
+                        nargs=1, type=str)
+
     out = parser.add_argument_group('- Output control')
     out.add_argument('-n', dest='number', help='Number of lines displayed (default: 50)')
-
-    search = parser.add_argument_group('- Show data used by a particular attacker')
-    search.add_argument('-QP', dest='qpasswd', help='Show passwords used by IP', nargs=1, type=str)
-    search.add_argument('-QU', dest='qusrnam', help='Show usernames used by IP', nargs=1, type=str)
-    search.add_argument('-QC', dest='qcombos', help='Show combintations used by IP', nargs=1,
-                        type=str)
 
     logs = parser.add_argument_group('- Log directory')
     logs.add_argument('-H', dest='hondir', help='HonSSH logs ({0})'.format(hlog), default=hlog)
