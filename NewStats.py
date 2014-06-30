@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 
-"""
-Used on the Bifrozt honeypot router to extract data from various system and attack logs. 
-"""
+"""Used on the Bifrozt honeypot router to extract data from various system and attack logs. """
 
 
 """
@@ -51,16 +49,13 @@ from collections import defaultdict
 
 
 def parse_args():
-    """
-    Defines the command line arguments.
-    """
+    """Defines the command line arguments. """
+    # If -H is not passed, the log location will be assumed to be '/opt/honssh/logs'
     hlog = '/opt/honssh/logs'
 
     #
     #   DEVELOPMENT NOTES
-    #
-    #   - argument that presents data according to search string, this could be passed together with
-    #     the other arguments or alone
+
     #   -- search by IP address or the first and/or second octet of the IP address
     #   -- search by country 
     #   - attack summary
@@ -77,7 +72,7 @@ def parse_args():
     honssh.add_argument('-U', dest='usrnam', help='Frequent usernames', action='store_true')
     honssh.add_argument('-C', dest='combos', help='Frequent combinations', action='store_true')
 
-    search = parser.add_argument_group('- ')
+    search = parser.add_argument_group('- Sort data by search search query')
     search.add_argument('-QP', dest='qpasswd', help='Show passwords used by IP or octet(s) in IP',
                         nargs=1, type=str)
     search.add_argument('-QU', dest='qusrnam', help='Show usernames used by IP or octet(s) in IP',
@@ -194,6 +189,9 @@ def origin_country(item_list, fid):
     return output
 
 
+#
+# -------------- DEV
+#
 def data_search(lines_data, query, fid):
     """Searches the lines_data for the query. """
     query_list = []
@@ -226,6 +224,9 @@ def data_search(lines_data, query, fid):
         counts[item] += 1
 
     return dict(counts)
+#
+# -------------- DEV
+#
 
 
 def count_list(item_list, fid):
@@ -381,6 +382,9 @@ def process_args(args):
     if args.number:
         number = int(args.number)
 
+    #
+    # -------------- DEV
+    #
     if args.qpasswd:
         number = 999999
         list_items = data_search(honssh_logs, args.qpasswd, 'passwd')
@@ -400,6 +404,9 @@ def process_args(args):
         list_items = found_login(honssh_logs)
         show_items = origin_country(list_items, 'access')
         show_results(show_items, 'access', number)
+    #
+    # -------------- DEV
+    #
 
     if args.source and not args.query:
         list_items = source_ip(honssh_logs)
