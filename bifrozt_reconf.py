@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 
 
-#
-#   DEVELOPMENT NOTES
-#
-#   This is one ugly looking script, but it works as intended :)
-#
-
-
 """This script is intended to be used on the Bifrozt honeypot router, 
 http://sourceforge.net/projects/bifrozt/, to generate dhcpd.conf, iptables and sshd_conf."""
 
@@ -54,6 +47,38 @@ except ImportError:
     print '\nERROR: You need the module called "ipaddr"!\n'
     sys.exit(1)
 
+#
+#   DEV NOTES
+#   - interactive menu 
+#   1) DHCPD
+#
+#       1) Reconfigure DHCPD
+#           - reconfigure network/gateway/broadcast/cidr in iptables
+#
+#       2) Add new static host
+#           - get values from existing configuration file and append new static host
+#
+#   2) Firewall
+#
+#      1) Data control
+#          - only change data control values, but keep current ports
+#    
+#      2) Outbound ports
+#          - only add/remove ports, but keep data control values if they exist.
+#          - if data values dont for the ports being added, get values from user
+#
+#      3) Change Bifrozt Admin sshd port
+#          - change port in sshd_config
+#          - chenge port in iptables
+#
+#   - verify syntax
+#       - dhcpd
+#       - iptables
+#       - sshd
+#
+#       - if syntax is verified
+#               load configuration files
+#
 
 def assign_values():
     """Assign DHCP values. """
@@ -385,7 +410,31 @@ def network_summary(dhcp_info):
         if verify != 'Y' and verify != 'N':
             print 'Please enter "Y" for Yes or "N" for No'
 
-    return dhcpd_conf, cidr, network, gateway, brdcast
+    return dhcpd_conf, cidr, network, gateway, brdcast, netmask
+
+
+def interfaces_config(if_values):
+    """Configures the interfaces file. """
+    if_list = []
+    if_list.append('auto lo')
+    if_list.append('iface lo inet loopback')
+    if_list.append('')
+    if_list.append('pre-up iptables-restore < /etc/network/iptables')
+    if_list.append('pre-up ip6tables-restore < /etc/network/iptables6')
+    if_list.append('')
+    if_list.append('auto eth0')
+    if_list.append('iface eth0 inet dhcp')
+    if_list.append('')
+    if_list.append('auto eth1')
+    if_list.append('iface eth1 inet static')
+    if_list.append('    address 10.48.139.1'.format(if_values[3]))
+    if_list.append('    netmask 255.255.255.0'.format(if_values[5]))
+    if_list.append('    network 10.48.139.0'.format(if_values[2]))
+    if_list.append('    broadcast 10.48.139.255'.format(if_values[4]))
+    if_list.append('')
+    if_list.append('dns-nameservers 8.8.8.8')
+
+    return if_list
 
 
 def iptables_config(netvalues):
@@ -744,12 +793,13 @@ def sshd_conf(port_number):
     return sshd_values
 
 
-def write_configs(dhcpd_values, fw_values, sshdsrv_values):
+def write_configs(dhcpd_values, fw_values, sshdsrv_values, interfaces_values):
     """Writes the assigned values to configuration files. """
     make_time = time.strftime('%y%m%d%H%M%S')
     dhcpd_file = 'dhcpd.conf.{0}'.format(make_time)
     sshd_config = 'sshd_config.{0}'.format(make_time)
     iptables_file = 'iptables.{0}'.format(make_time)
+    interfaces_file = 'interfaces.{}'.format(make_time)
 
     for values in dhcpd_values[0]:
         with open(dhcpd_file, 'a') as config:
@@ -767,7 +817,13 @@ def write_configs(dhcpd_values, fw_values, sshdsrv_values):
         with open(sshd_config, 'a') as sshd:
             sshd.write('{0}\n'.format(values))
 
-    print '- Created {0}\n'.format(sshd_config)
+    print '- Created {0}'.format(sshd_config)
+
+    for values in interfaces_values:
+        with open(interfaces_file, 'a') as interfaces:
+            interfaces.write('{0}\n'.format(values))
+
+    print '- Created {0}\n'.format(interfaces_file)
 
 
 def main():
@@ -776,7 +832,8 @@ def main():
     dhcpd_config = network_summary(info)
     iptable_conf = iptables_config(dhcpd_config)
     sshdsrv_conf = sshd_conf(iptable_conf)
-    write_configs(dhcpd_config, iptable_conf, sshdsrv_conf)
+    inet_configs = interfaces_config(dhcpd_config)
+    write_configs(dhcpd_config, iptable_conf, sshdsrv_conf, inet_configs)
 
 
 if __name__ == '__main__':
